@@ -3,6 +3,42 @@
 # combining them with its --index option (the PyPi location) and 
 # turning them into concrete dependencies and installing them.
 # Reference: https://caremad.io/blog/setup-vs-requirement/
---index-url https://pypi.python.org/simple/
 
--e .
+# Main Bokeh
+Flask>=0.10.1
+Jinja2>=2.7
+MarkupSafe>=0.18
+Werkzeug>=0.9.1
+greenlet>=0.4.1
+itsdangerous>=0.21
+python-dateutil>=2.1
+pytz==2013b
+requests>=1.2.3
+six>=1.5.2
+pygments>=1.6
+pystache>=0.5.3
+markdown>=2.3.1
+PyYAML>=3.10
+pyzmq>=14.3.1
+tornado>=4.0.1
+click>=3.3
+colorama>=0.2.7
+
+# For Tests to Pass (not in docs)
+beautifulsoup4==4.3.2
+abstract-rendering==0.5.1
+websocket-client==0.23.0
+
+# Docs
+
+docutils
+sphinx
+sphinxcontrib-napoleon
+sphinx-bootstrap-theme
+seaborn
+
+# Not in docs, required for make serve
+sphinxcontrib-httpdomain
+
+# Gallery
+ggplot
