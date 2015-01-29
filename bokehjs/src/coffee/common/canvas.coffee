@@ -30,7 +30,7 @@ define [
       # for compat, to be removed
       @canvas_wrapper = @$el
 
-      @canvas = @$('canvas.bk-canvas')
+      @canvas = @$('canvas.bk-canvas')[0]
       @canvas_events = @$('div.bk-canvas-events')
       @canvas_overlay = @$('div.bk-canvas-overlays')
       @map_div = @$('div.bk-canvas-map') ? null
@@ -42,7 +42,8 @@ define [
       # should be configured with new bounds.
       if not @model.new_bounds and not force
         return
-      @ctx = @canvas[0].getContext('2d')
+
+      @ctx = @canvas.getContext('2d')
 
       if @mget('use_hidpi')
         devicePixelRatio = window.devicePixelRatio || 1
