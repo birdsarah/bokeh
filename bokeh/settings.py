@@ -1,5 +1,6 @@
-from os.path import join, dirname, abspath
+import logging
 import os
+from os.path import join, dirname, abspath, exists
 
 class Settings(object):
     _prefix = "BOKEH_"
@@ -43,11 +44,17 @@ class Settings(object):
     def log_level(self, default=None):
         return self._get_str("LOG_LEVEL", default)
 
+    def py_log_level(self, default='info'):
+        level = self._get_str("PY_LOG_LEVEL", default)
+        LEVELS = {'debug': logging.DEBUG,
+                  'info' : logging.INFO,
+                  'warn' : logging.WARNING,
+                  'error': logging.ERROR,
+                  'fatal': logging.CRITICAL}
+        return LEVELS[level]
+
     def pretty(self, default=None):
         return self._get_bool("PRETTY", default)
-
-    def pythonlib(self, default=None):
-        return self._get_str("PYTHONLIB", default)
 
     def simple_ids(self, default=None):
         return self._get_bool("SIMPLE_IDS", default)
@@ -73,16 +80,22 @@ class Settings(object):
     def bokehjssrcdir(self):
         if self.debugjs:
             basedir = dirname(dirname(self.serverdir()))
-            return join(basedir, 'bokehjs', 'src')
-        else:
-            return None
+            bokehjsdir = join(basedir, 'bokehjs', 'src')
+
+            if exists(bokehjsdir):
+                return bokehjsdir
+
+        return None
 
     def bokehjsdir(self):
         if self.debugjs:
             basedir = dirname(dirname(self.serverdir()))
-            return join(basedir, 'bokehjs', 'build')
-        else:
-            return join(self.serverdir(), 'static')
+            bokehjsdir = join(basedir, 'bokehjs', 'build')
+
+            if exists(bokehjsdir):
+                return bokehjsdir
+
+        return join(self.serverdir(), 'static')
 
     def js_files(self):
         bokehjsdir = self.bokehjsdir()

@@ -1,10 +1,17 @@
 from __future__ import absolute_import, print_function
 
+import logging
 import warnings
 from . import utils
 from . import sampledata
 from ._version import get_versions
 from .settings import settings
+
+# configure logger level
+level = settings.py_log_level()
+logging.basicConfig(level=level)
+# set up the logger
+log = logging.getLogger(__name__)
 
 try:
     from .__conda_version__ import conda_version
@@ -83,11 +90,21 @@ hide_banner = settings.notebook_hide_banner()
 # whether to skip the load_notebook at __init__
 skip_load = settings.notebook_skip_load()
 
+# detect if we are in a IPython instance
 try:
-    if not skip_load:
+    ip = get_ipython()
+except NameError:
+    ip = None
+    log.debug("You are not inside an IPython/Jupyter instance.")
+
+# load the notebook resources
+try:
+    if ip and not skip_load:
         load_notebook(resources=resources, verbose=verbose, hide_banner=hide_banner)
 except ImportError:
-    pass
+    log.debug("You don't have IPython/Jupyter installed.")
+except IOError:
+    log.debug("You don't have the static files available.")
 
 def _print_versions():
     import platform as pt

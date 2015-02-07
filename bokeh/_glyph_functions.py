@@ -65,11 +65,12 @@ def _glyph_function(glyphclass, dsnames, argnames, docstring, xfields=["x"], yfi
         nonselection_glyph_params = _materialize_colors_and_alpha(kwargs, prefix='nonselection_', default_alpha=0.1)
         nonselection_glyph = glyph.clone()
 
-        if isinstance(nonselection_glyph, FillProps):
+        # TODO: (bev) This is a bit hacky.
+        if hasattr(nonselection_glyph, 'fill_color'):
             nonselection_glyph.fill_color = nonselection_glyph_params['fill_color']
             nonselection_glyph.fill_alpha = nonselection_glyph_params['fill_alpha']
 
-        if isinstance(nonselection_glyph, LineProps):
+        if hasattr(nonselection_glyph, 'line_color'):
             nonselection_glyph.line_color = nonselection_glyph_params['line_color']
             nonselection_glyph.line_alpha = nonselection_glyph_params['line_alpha']
 
@@ -418,6 +419,20 @@ are also accepted as keyword parameters.
 
 Returns:
     plot
+
+Examples:
+
+    .. bokeh-plot::
+       :source-position: above
+
+       from bokeh.plotting import figure, output_file, show
+
+       output_file("lines.html")
+
+       p = figure(title="line", plot_width=300, plot_height=300)
+       p.line([1, 2, 3, 4, 5], [6, 7, 2, 4, 5])
+
+       show(p)
 """
 )
 
