@@ -4,11 +4,14 @@
 # turning them into concrete dependencies and installing them.
 # Reference: https://caremad.io/blog/setup-vs-requirement/
 
+## MANUALLY INSTALL THIS FIRST!!
+numpy>=1.7.1
+
 # Main Bokeh
 Flask>=0.10.1
 Jinja2>=2.7
 MarkupSafe>=0.18
-Werkzeug>=0.9.1
+Werkzeug>=0.9.1, <0.10.0
 greenlet>=0.4.1
 itsdangerous>=0.21
 python-dateutil>=2.1
@@ -23,8 +26,15 @@ pyzmq>=14.3.1
 tornado>=4.0.1
 click>=3.3
 colorama>=0.2.7
+pandas>=0.11.0
 
 # For Tests to Pass (not in docs)
+nose
+coverage
+mock
+scipy
+sympy
+icalendar
 beautifulsoup4==4.3.2
 abstract-rendering==0.5.1
 websocket-client==0.23.0
