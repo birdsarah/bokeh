@@ -51,9 +51,13 @@ def configure_flask(config_argparse=None, config_file=None, config_dict=None):
         import redis
         rhost = backend.get('redis_host', '127.0.0.1')
         rport = backend.get('redis_port', REDIS_PORT)
-        bbstorage = RedisBackboneStorage(redis.Redis(host=rhost, port=rport, db=2))
+        rpass = backend.get('redis_password', None)
+        bbstorage = RedisBackboneStorage(redis.Redis(host=rhost,
+                                                     port=rport,
+                                                     password=rpass))
         servermodel_storage = RedisServerModelStorage(redis.Redis(host=rhost,
-                                                                  port=rport, db=3))
+                                                                  port=rport,
+                                                                  password=rpass))
     elif backend['type'] == 'memory':
         bbstorage = InMemoryBackboneStorage()
         servermodel_storage = InMemoryServerModelStorage()
