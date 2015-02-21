@@ -1,16 +1,15 @@
 package:
   name: bokeh
-  version: 'nightly'
+  version: 'authenticated_redis'
 
 build:
-  number: {{ environ.get('BINSTAR_BUILD', 1) }}
+  number: 201502201504
 
 requirements:
   build:
     - python
     - distribute
     - setuptools
-    - nodejs
 
   run:
     # bokeh
@@ -37,44 +36,6 @@ requirements:
     # CLI
     # - click
 
-test:
-  requires:
-    # docs
-    - graphviz
-    - sphinx
-    - pygments
-    - sphinx-bootstrap-theme
-    - sphinxcontrib-httpdomain
-    - sphinxcontrib-napoleon
-
-    # tests
-    - beautiful-soup
-    - colorama
-    - pyyaml
-    - pdiff
-    - boto                 [py2k]
-    - jinja2
-    - nose
-    - mock
-    - coverage
-    - websocket-client
-    - ipython
-    - ipython-notebook
-
-    # examples
-    - scipy
-    - matplotlib
-    - sympy
-    - ggplot
-    - seaborn
-    - icalendar
-
-  commands:
-    - bokeh-server -h        [linux64 or osx]
-
-  imports:
-    - bokeh
-
 about:
-  home: https://github.com/bokeh/bokeh
+  home: https://github.com/birdsarah/bokeh
   license: New BSD
