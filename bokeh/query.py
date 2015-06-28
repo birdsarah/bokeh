@@ -28,6 +28,8 @@ Examples::
 
 '''
 
+from __future__ import absolute_import
+
 from six import string_types
 
 class OR(object): pass
@@ -41,7 +43,7 @@ class LEQ(object): pass
 class NEQ(object): pass
 
 
-def match(obj, selector, context={}):
+def match(obj, selector, context=None):
     ''' Test whether a particular object matches a given
     selector.
 
@@ -53,7 +55,7 @@ def match(obj, selector, context={}):
     Returns:
         bool : True if the object matches, False otherwise
 
-    There are two selector keyss that are handled specially. The first
+    There are two selector keys that are handled specially. The first
     is 'type', which will do an isinstance check::
 
         >>> from bokeh.plotting import line
@@ -62,7 +64,7 @@ def match(obj, selector, context={}):
         >>> len(list(p.select({'type': Axis})))
         2
 
-    There is also a a 'tags' attribute that `PlotObject` objects have,
+    There is also a 'tags' attribute that `PlotObject` objects have,
     that is a list of user-supplied values. The 'tags' selector key can
     be used to query against this list of tags. An object matches if
     any of the tags in the selector match any of the tags on the
@@ -78,6 +80,7 @@ def match(obj, selector, context={}):
         1
 
     '''
+    context = context or {}
     for key, val in selector.items():
 
         # test attributes
@@ -114,7 +117,7 @@ def match(obj, selector, context={}):
                         return False
 
                 elif isinstance(val, dict):
-                    if not match(attr, val): return False
+                    if not match(attr, val, context): return False
 
                 else:
                     if attr != val: return False
@@ -133,7 +136,7 @@ def match(obj, selector, context={}):
     return True
 
 
-def find(objs, selector, context={}):
+def find(objs, selector, context=None):
     ''' Query an object and all of its contained references
     and yield objects that match the given selector.
 
@@ -164,4 +167,3 @@ _operators = {
    LEQ: lambda x, y: x <= y,
    NEQ: lambda x, y: x != y,
 }
-

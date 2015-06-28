@@ -1,23 +1,22 @@
+from __future__ import absolute_import
 
-from collections import Iterable, Sequence
+from collections import Iterable, OrderedDict, Sequence
 import itertools
-from numbers import Number
 import numpy as np
 import re
 import difflib
 from six import string_types
 
-from .models import glyphs
 from .models import (
-    BoxSelectionOverlay, BoxSelectTool, BoxZoomTool, CategoricalAxis,
-    ColumnDataSource, RemoteSource, TapTool, CrosshairTool, DataRange1d, DatetimeAxis,
-    FactorRange, Grid, HoverTool, LassoSelectTool, Legend, LinearAxis,
+    BoxSelectTool, BoxZoomTool, CategoricalAxis,
+    TapTool, CrosshairTool, DataRange1d, DatetimeAxis,
+    FactorRange, Grid, HelpTool, HoverTool, LassoSelectTool, Legend, LinearAxis,
     LogAxis, PanTool, Plot, PolySelectTool,
     PreviewSaveTool, Range, Range1d, ResetTool, ResizeTool, Tool,
-    WheelZoomTool)
+    WheelZoomTool, ColumnDataSource)
 
 from .properties import ColorSpec, Datetime
-from .utils import nice_join
+from .util.string import nice_join
 import warnings
 
 def get_default_color(plot=None):
@@ -60,8 +59,43 @@ def _glyph_doc(args, props, desc):
     plot : :py:class:`Plot <bokeh.models.Plot>`
     """ % (desc, params, props)
 
-def _match_data_params(argnames, glyphclass, datasource,
-                       args, kwargs):
+def _pop_renderer_args(kwargs):
+    result = dict(data_source=kwargs.pop('source', ColumnDataSource()))
+    for attr in ['name', 'x_range_name', 'y_range_name', 'level']:
+        val = kwargs.pop(attr, None)
+        if val: result[attr] = val
+    return result
+
+def _pop_colors_and_alpha(glyphclass, kwargs, prefix="", default_alpha=1.0):
+    """
+    Given a kwargs dict, a prefix, and a default value, looks for different
+    color and alpha fields of the given prefix, and fills in the default value
+    if it doesn't exist.
+    """
+    result = dict()
+
+    # TODO: The need to do this and the complexity of managing this kind of
+    # thing throughout the codebase really suggests that we need to have
+    # a real stylesheet class, where defaults and Types can declaratively
+    # substitute for this kind of imperative logic.
+    color = kwargs.pop(prefix+"color", get_default_color())
+    for argname in ("fill_color", "line_color"):
+        if argname not in glyphclass.properties(): continue
+        result[argname] = kwargs.pop(prefix + argname, color)
+
+    # NOTE: text fill color should really always default to black, hard coding
+    # this here now untils the stylesheet solution exists
+    if "text_color" in glyphclass.properties():
+        result["text_color"] = kwargs.pop(prefix + "text_color", "black")
+
+    alpha = kwargs.pop(prefix+"alpha", default_alpha)
+    for argname in ("fill_alpha", "line_alpha", "text_alpha"):
+        if argname not in glyphclass.properties(): continue
+        result[argname] = kwargs.pop(prefix + argname, alpha)
+
+    return result
+
+def _match_args(argnames, glyphclass, datasource, args, kwargs):
     """ Processes the arguments and kwargs passed in to __call__ to line
     them up with the argnames of the underlying Glyph
 
@@ -72,155 +106,52 @@ def _match_data_params(argnames, glyphclass, datasource,
     # Go through the list of position and keyword arguments, matching up
     # the full list of required glyph data attributes
     attributes = dict(zip(argnames, args))
-    if len(args) < len(argnames):
-        for argname in argnames[len(args):]:
-            if argname in kwargs:
-                attributes[argname] = kwargs.pop(argname)
-            else:
-                raise RuntimeError("Missing required glyph parameter '%s'" % argname)
-    # Go through keys in alpha order, so that *_units are handled after
-    # the dataspec dict is already created
+    missing = set(argnames[len(args):]) - set(kwargs.keys())
+    if missing:
+        raise RuntimeError("Missing required glyph parameters: %s" % ", ".join(sorted(missing)))
+    kwargs.update(attributes)
+
+def _process_sequence_literals(glyphclass, kwargs, source):
     dataspecs = glyphclass.dataspecs_with_refs()
-    for kw in kwargs:
-        if (kw.endswith("_units") and kw[:-6] in dataspecs) or kw in dataspecs:
-            attributes[kw] = kwargs[kw]
+    for var, val in kwargs.items():
 
-    glyph_params = {}
-    for var in sorted(attributes.keys()):
-        val = attributes[var]
+        # let any non-dataspecs do their own validation (e.g., line_dash properties)
+        if var not in dataspecs: continue
 
-        if var.endswith("_units") and var[:-6] in dataspecs:
-            dspec = var[:-6]
-            if dspec not in glyph_params:
-                raise RuntimeError("Cannot set units on undefined field '%s'" % dspec)
-            curval = glyph_params[dspec]
-            if not isinstance(curval, dict):
-                # TODO: This assumes that string values are fields; this is invalid
-                # for ColorSpecs, but all this logic is to handle dataspec units, and
-                # ColorSpecs do not have units.  However, if there are other kinds of
-                # DataSpecs that do have string constants, then we will need to fix
-                # this up to have smarter detection of field names.
-                if isinstance(curval, string_types):
-                    glyph_params[dspec] = {"field": curval, "units": val}
-                else:
-                    glyph_params[dspec] = {"value": curval, "units": val}
-            else:
-                glyph_params[dspec]["units"] = val
+        # strings sequences are handled by the dataspec as-is
+        if isinstance(val, string_types): continue
+
+        # similarly colorspecs handle color tuple sequences as-is
+        if (isinstance(dataspecs[var], ColorSpec) and ColorSpec.is_color_tuple(val)):
             continue
 
-        if isinstance(val, dict) or isinstance(val, Number):
-            glyph_val = val
-        elif isinstance(dataspecs.get(var, None), ColorSpec) and (ColorSpec.isconst(val) or val is None):
-            # This check for color constants needs to happen relatively early on because
-            # both strings and certain iterables are valid colors.
-            glyph_val = val
-        elif isinstance(val, string_types):
-            if glyphclass == glyphs.Text: # XXX: issubclass()
-                # TODO (bev) this is hacky, now that text is a DataSpec, it has to be a sequence
-                glyph_val = [val]
-            elif not isinstance(datasource, RemoteSource) and val not in datasource.column_names:
-                raise RuntimeError("Column name '%s' does not appear in data source %r" % (val, datasource))
-            else:
-                if val not in datasource.column_names:
-                    datasource.column_names.append(val)
-                    datasource.data[val] = []
-                units = getattr(dataspecs[var], 'units', 'data')
-                glyph_val = {'field' : val, 'units' : units}
-        elif isinstance(val, np.ndarray):
+        if isinstance(val, np.ndarray):
             if val.ndim != 1:
                 raise RuntimeError("Columns need to be 1D (%s is not)" % var)
-            datasource.add(val, name=var)
-            units = getattr(dataspecs[var], 'units', 'data')
-            glyph_val = {'field' : var, 'units' : units}
+            source.add(val, name=var)
+            kwargs[var] = var
         elif isinstance(val, Iterable):
-            datasource.add(val, name=var)
-            units = getattr(dataspecs[var], 'units', 'data')
-            glyph_val = {'field' : var, 'units' : units}
-        else:
-            raise RuntimeError("Unexpected column type: %s" % type(val))
-        glyph_params[var] = glyph_val
-    return glyph_params
+            source.add(val, name=var)
+            kwargs[var] = var
 
-def _update_plot_data_ranges(plot, datasource, xcols, ycols):
-    """
-    Parameters
-    ----------
-    plot : plot
-    datasource : datasource
-    xcols : names of columns that are in the X axis
-    ycols : names of columns that are in the Y axis
-    """
-    if isinstance(plot.x_range, DataRange1d):
-        x_column_ref = [x for x in plot.x_range.sources if x.source == datasource]
-        if len(x_column_ref) > 0:
-            x_column_ref = x_column_ref[0]
-            for cname in xcols:
-                if cname not in x_column_ref.columns:
-                    x_column_ref.columns.append(cname)
-        else:
-            plot.x_range.sources.append(datasource.columns(*xcols))
-        plot.x_range._dirty = True
+def _make_glyph(glyphclass, kws, extra):
+        kws = kws.copy()
+        kws.update(extra)
+        return glyphclass(**kws)
 
-    if isinstance(plot.y_range, DataRange1d):
-        y_column_ref = [y for y in plot.y_range.sources if y.source == datasource]
-        if len(y_column_ref) > 0:
-            y_column_ref = y_column_ref[0]
-            for cname in ycols:
-                if cname not in y_column_ref.columns:
-                    y_column_ref.columns.append(cname)
-        else:
-            plot.y_range.sources.append(datasource.columns(*ycols))
-        plot.y_range._dirty = True
-
-def _materialize_colors_and_alpha(kwargs, prefix="", default_alpha=1.0):
-    """
-    Given a kwargs dict, a prefix, and a default value, looks for different
-    color and alpha fields of the given prefix, and fills in the default value
-    if it doesn't exist.
-    """
-    kwargs = kwargs.copy()
-
-    # TODO: The need to do this and the complexity of managing this kind of
-    # thing throughout the codebase really suggests that we need to have
-    # a real stylesheet class, where defaults and Types can declaratively
-    # substitute for this kind of imperative logic.
-    color = kwargs.pop(prefix+"color", get_default_color())
-    for argname in ("fill_color", "line_color"):
-        kwargs[argname] = kwargs.get(prefix + argname, color)
-
-    # NOTE: text fill color should really always default to black, hard coding
-    # this here now untils the stylesheet solution exists
-    kwargs["text_color"] = kwargs.get(prefix + "text_color", "black")
-
-    alpha = kwargs.pop(prefix+"alpha", default_alpha)
-    for argname in ("fill_alpha", "line_alpha", "text_alpha"):
-        kwargs[argname] = kwargs.get(prefix + argname, alpha)
-
-    return kwargs
-
-def _get_legend(plot):
-    legend = [x for x in plot.renderers if x.__view_model__ == "Legend"]
-    if len(legend) > 0:
-        legend = legend[0]
+def _update_legend(plot, legend_name, glyph_renderer):
+    legends = plot.select(type=Legend)
+    if not legends:
+        legend = Legend(plot=plot)
+        plot.renderers.append(legend)
+        plot._dirty = True
+    elif len(legends) == 1:
+        legend = legends[0]
     else:
-        legend = None
-    return legend
-
-def _make_legend(plot):
-    legend = Legend(plot=plot)
-    plot.renderers.append(legend)
-    plot._dirty = True
-    return legend
-
-def _get_select_tool(plot):
-    """returns select tool on a plot, if it's there
-    """
-    select_tool = [x for x in plot.tools if x.__view_model__ == "BoxSelectTool"]
-    if len(select_tool) > 0:
-        select_tool = select_tool[0]
-    else:
-        select_tool = None
-    return select_tool
+        raise RuntimeError("Plot %s configured with more than one legend renderer" % plot)
+    specs = OrderedDict(legend.legends)
+    specs.setdefault(legend_name, []).append(glyph_renderer)
+    legend.legends = list(specs.items())
 
 def _get_range(range_input):
     if range_input is None:
@@ -260,7 +191,6 @@ def _get_axis_class(axis_type, range_input):
     else:
         raise ValueError("Unrecognized axis_type: '%r'" % axis_type)
 
-
 def _get_num_minor_ticks(axis_class, num_minor_ticks):
     if isinstance(num_minor_ticks, int):
         if num_minor_ticks <= 1:
@@ -296,6 +226,7 @@ _known_tools = {
     ]),
     "previewsave": lambda: PreviewSaveTool(),
     "reset": lambda: ResetTool(),
+    "help": lambda: HelpTool(),
 }
 
 def _tool_from_string(name):
@@ -316,7 +247,6 @@ def _tool_from_string(name):
             matches, text = known_tools, "possible"
 
         raise ValueError("unexpected tool name '%s', %s tools are %s" % (name, text, nice_join(matches)))
-
 
 def _process_tools_arg(plot, tools):
     """ Adds tools to the plot object
@@ -362,7 +292,6 @@ def _process_tools_arg(plot, tools):
 
     return tool_objs
 
-
 def _new_xy_plot(x_range=None, y_range=None, plot_width=None, plot_height=None,
                  x_axis_type="auto", y_axis_type="auto",
                  x_axis_location="below", y_axis_location="left",
@@ -391,7 +320,7 @@ def _new_xy_plot(x_range=None, y_range=None, plot_width=None, plot_height=None,
         axis_label = kw.pop('x_axis_label', None)
         if axis_label:
             xaxis.axis_label = axis_label
-        xgrid = Grid(plot=plot, dimension=0, ticker=xaxis.ticker)
+        xgrid = Grid(plot=plot, dimension=0, ticker=xaxis.ticker); xgrid
         if x_axis_location == "above":
             plot.above.append(xaxis)
         elif x_axis_location == "below":
@@ -406,7 +335,7 @@ def _new_xy_plot(x_range=None, y_range=None, plot_width=None, plot_height=None,
         axis_label = kw.pop('y_axis_label', None)
         if axis_label:
             yaxis.axis_label = axis_label
-        ygrid = Grid(plot=plot, dimension=1, ticker=yaxis.ticker)
+        ygrid = Grid(plot=plot, dimension=1, ticker=yaxis.ticker); ygrid
         if y_axis_location == "left":
             plot.left.append(yaxis)
         elif y_axis_location == "right":
@@ -467,58 +396,13 @@ def _new_xy_plot(x_range=None, y_range=None, plot_width=None, plot_height=None,
 
     return plot
 
-
-def _handle_1d_data_args(args, datasource=None, create_autoindex=True,
-        suggested_names=[]):
-    """ Returns a datasource and a list of names corresponding (roughly)
-    to the input data.  If only a single array was given, and an index
-    array was created, then the index's name is returned first.
-    """
-    arrays = []
-    if datasource is None:
-        datasource = ColumnDataSource()
-    # First process all the arguments to homogenize shape.  After this
-    # process, "arrays" should contain a uniform list of string/ndarray/iterable
-    # corresponding to the inputs.
-    for arg in args:
-        if isinstance(arg, string_types):
-            # This has to be handled before our check for Iterable
-            arrays.append(arg)
-
-        elif isinstance(arg, np.ndarray):
-            if arg.ndim == 1:
-                arrays.append(arg)
-            else:
-                arrays.extend(arg)
-
-        elif isinstance(arg, Iterable):
-            arrays.append(arg)
-
-        elif isinstance(arg, Number):
-            arrays.append([arg])
-
-    # Now handle the case when they've only provided a single array of
-    # inputs (i.e. just the values, and no x positions).  Generate a new
-    # dummy array for this.
-    if create_autoindex and len(arrays) == 1:
-        arrays.insert(0, np.arange(len(arrays[0])))
-
-    # Now put all the data into a DataSource, or insert into existing one
-    names = []
-    for i, ary in enumerate(arrays):
-        if isinstance(ary, string_types):
-            name = ary
-        else:
-            if i < len(suggested_names):
-                name = suggested_names[i]
-            elif i == 0 and create_autoindex:
-                name = datasource.add(ary, name="_autoindex")
-            else:
-                name = datasource.add(ary)
-        names.append(name)
-    return names, datasource
-
 class _list_attr_splat(list):
     def __setattr__(self, attr, value):
         for x in self:
             setattr(x, attr, value)
+
+    def __dir__(self):
+        if len(set(type(x) for x in self)) == 1:
+            return dir(self[0])
+        else:
+            return dir(self)

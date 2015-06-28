@@ -1,10 +1,10 @@
-from __future__ import print_function
+from __future__ import absolute_import, print_function
 from ..plotting import figure, curdoc
 from ..plot_object import PlotObject
 from ..models import ServerDataSource,  GlyphRenderer, Range1d, Color
 from ..properties import (Instance, Any, Either,
                           Int, Float, List, Bool, String)
-from six import get_function_code
+from six import get_function_code, string_types
 
 import bokeh.colors as colors
 import numpy as np
@@ -27,6 +27,8 @@ Joseph Cottam (jcottam@indiana.edu)
 -------------------------------------------------------
 """
 
+# Tell pyflakes that these names exists
+ari = ar = categories = contour = infos = general = glyphset = npg = numeric = util = None
 
 def _loadAR():
     """
@@ -58,10 +60,10 @@ def _loadAR():
         raise ImportError("Abstract rendering version not found; import aborted.")
 
     if (ari.__version_info__["major"] != expected["major"]
-       or ari.__version_info__["minor"] != expected["minor"]
-       or ari.__version_info__["micro"] < expected["micro"]):
-           raise ImportError("Abstract rendering version mismatched." +
-                             "Expecting at least {0}, found {1}".format(_AR_VERSION, ari.__version__))
+        or ari.__version_info__["minor"] != expected["minor"]
+        or ari.__version_info__["micro"] < expected["micro"]):
+            raise ImportError("Abstract rendering version mismatched." +
+                              "Expecting at least {0}, found {1}".format(_AR_VERSION, ari.__version__))
 
     try:
         globals()["ar"] = import_module("abstract_rendering.core")
@@ -229,7 +231,7 @@ class ImageShader(Shader):
                 return tuple(color[0:3]) + (min(abs(color[3])*255, 255),)
             raise ValueError("Improperly formatted tuple for color %s" % color)
 
-        if isinstance(color, str) or isinstance(color, unicode):
+        if isinstance(color, string_types):
             if color[0] == "#":
                 color = color.lstrip('#')
                 lv = len(color)
@@ -404,7 +406,7 @@ class Contour(Shader):
 def replot(plot,
            agg=Count(), info=Const(val=1), shader=Id(),
            remove_original=True,
-           plot_opts={}, **kwargs):
+           plot_opts=None, **kwargs):
     """
     Treat the passed plot as an base plot for abstract rendering, generate the
     proper Bokeh plot based on the passed parameters.
@@ -449,6 +451,7 @@ def replot(plot,
     fig_opts['title'] = kwargs.pop('title', plot.title)
 
     src = source(plot, agg, info, shader, **source_opts)
+    plot_opts = plot_opts or {}
     plot_opts.update(mapping(src))
 
     new_plot = figure(**fig_opts)
@@ -623,10 +626,10 @@ def downsample_line(xcol, ycol, glyphs, transform, plot_state, auto_bounds):
         plot_state['data_x'].end = xcol.max()
         plot_state['data_y'].start = ycol.min()
         plot_state['data_y'].end = ycol.max()
-    screen_x_span = float(_span(plot_state['screen_x']))
-    screen_y_span = float(_span(plot_state['screen_y']))
-    data_x_span = float(_span(plot_state['data_x']))
-    data_y_span = float(_span(plot_state['data_y']))
+    #screen_x_span = float(_span(plot_state['screen_x']))  # todo: use these?
+    #screen_y_span = float(_span(plot_state['screen_y']))
+    #data_x_span = float(_span(plot_state['data_x']))  # todo: use these?
+    #data_y_span = float(_span(plot_state['data_y']))
     shader = transform['shader']
 
     bounds = glyphs.bounds()
@@ -663,7 +666,7 @@ def downsample_image(xcol, ycol, glyphs, transform, plot_state, auto_bounds):
     data_x_span = float(_span(plot_state['data_x']))
     data_y_span = float(_span(plot_state['data_y']))
     shader = transform['shader']
-    balanced_zoom = transform.get('balancedZoom', False)
+    #balanced_zoom = transform.get('balancedZoom', False)  # todo: use this?
 
     bounds = glyphs.bounds()
     scale_x = data_x_span/screen_x_span
@@ -680,11 +683,16 @@ def downsample_image(xcol, ycol, glyphs, transform, plot_state, auto_bounds):
                       plot_size, vt)
 
     image = shader.reformat(image)
+    """AR renders the WHOLE dataset - then it's up to the client
+    to only render the proper subset.  The client should also not
+    re-request on operations hat do not require re-renders (i.e. pans)
+    however I broke that in the blaze refactor - TODO :  is to fix that
+    """
     result = {'data' : {'image': [image],
-                        'x': [plot_state['data_x'].start],
-                        'y': [plot_state['data_y'].start],
-                        'dw': [data_x_span],
-                        'dh': [data_y_span]}}
+                        'x': [xcol.min()],
+                        'y': [ycol.min()],
+                        'dw': [xcol.max() - xcol.min()],
+                        'dh': [ycol.max() - ycol.min()]}}
     result['x_range'] = {'start': plot_state['data_x'].start,
                          'end': plot_state['data_x'].end}
     result['y_range'] = {'start': plot_state['data_y'].start,

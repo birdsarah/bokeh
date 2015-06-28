@@ -17,10 +17,12 @@ It also add a new chained stacked method.
 # Imports
 #-----------------------------------------------------------------------------
 
+from __future__ import absolute_import
+
 import numpy as np
 import pandas as pd
 
-from ..utils import make_scatter
+from ..utils import make_scatter, cycle_colors
 from .._builder import Builder, create_and_build
 from ...models import ColumnDataSource, FactorRange, GlyphRenderer, Range1d
 from ...models.glyphs import Rect, Segment
@@ -44,7 +46,7 @@ def BoxPlot(values, marker="circle", outliers=True, xscale="categorical", yscale
         outliers (bool, optional): Whether or not to plot outliers.
 
     In addition the the parameters specific to this chart,
-    :ref:`charts_generic_arguments` are also accepted as keyword parameters.
+    :ref:`userguide_charts_generic_arguments` are also accepted as keyword parameters.
 
     Returns:
         a new :class:`Chart <bokeh.charts.Chart>`
@@ -54,25 +56,26 @@ def BoxPlot(values, marker="circle", outliers=True, xscale="categorical", yscale
     .. bokeh-plot::
         :source-position: above
 
-        from bokeh.charts import BoxPlot
         import numpy as np
-        from bokeh.plotting import output_file, show
+        from bokeh.charts import BoxPlot, output_file, show
 
         # (dict, OrderedDict, lists, arrays and DataFrames of arrays are valid inputs)
         medals = dict([
-                    ('bronze', np.array([7.0, 10.0, 8.0, 7.0, 4.0, 4.0, 1.0, 5.0, 2.0, 1.0,
-                                4.0, 2.0, 1.0, 2.0, 4.0, 1.0, 0.0, 1.0, 1.0, 2.0,
-                                0.0, 1.0, 0.0, 0.0, 1.0, 1.0])),
-                    ('silver', np.array([8., 4., 6., 4., 8., 3., 3., 2., 5., 6.,
-                                1., 4., 2., 3., 2., 0., 0., 1., 2., 1.,
-                                3.,  0.,  0.,  1.,  0.,  0.])),
-                    ('gold', np.array([6., 6., 6., 8., 4., 8., 6., 3., 2., 2.,  2.,  1.,
-                              3., 1., 0., 5., 4., 2., 0., 0., 0., 1., 1., 0., 0.,
-                              0.]))
-                ])
-        output_file('boxplot.html')
+            ('bronze', np.array([7.0, 10.0, 8.0, 7.0, 4.0, 4.0, 1.0, 5.0, 2.0, 1.0,
+                        4.0, 2.0, 1.0, 2.0, 4.0, 1.0, 0.0, 1.0, 1.0, 2.0,
+                        0.0, 1.0, 0.0, 0.0, 1.0, 1.0])),
+            ('silver', np.array([8., 4., 6., 4., 8., 3., 3., 2., 5., 6.,
+                        1., 4., 2., 3., 2., 0., 0., 1., 2., 1.,
+                        3.,  0.,  0.,  1.,  0.,  0.])),
+            ('gold', np.array([6., 6., 6., 8., 4., 8., 6., 3., 2., 2.,  2.,  1.,
+                      3., 1., 0., 5., 4., 2., 0., 0., 0., 1., 1., 0., 0.,
+                      0.]))
+        ])
+
         boxplot = BoxPlot(medals, marker="circle", outliers=True, title="boxplot",
             xlabel="medal type", ylabel="medal count")
+
+        output_file('boxplot.html')
         show(boxplot)
 
     """
@@ -153,11 +156,12 @@ class BoxPlotBuilder(Builder):
         lower_center_boxes = []
         lower_height_boxes = []
         out_x, out_y, out_color = ([], [], [])
+        colors = cycle_colors(self._groups, self.palette)
 
-        for i, level in enumerate(self._groups):
+        for i, (level, values) in enumerate(self._values.items()):
             # Compute quantiles, center points, heights, IQR, etc.
             # quantiles
-            q = np.percentile(self._values[level], [25, 50, 75])
+            q = np.percentile(values, [25, 50, 75])
             q0_points.append(q[0])
             q2_points.append(q[2])
 
@@ -165,8 +169,8 @@ class BoxPlotBuilder(Builder):
             iqr_centers.append((q[2] + q[0]) / 2)
             iqr = q[2] - q[0]
             iqr_lengths.append(iqr)
-            lower = q[1] - 1.5 * iqr
-            upper = q[1] + 1.5 * iqr
+            lower = q[0] - 1.5 * iqr
+            upper = q[2] + 1.5 * iqr
             lower_points.append(lower)
             upper_points.append(upper)
 
@@ -178,13 +182,13 @@ class BoxPlotBuilder(Builder):
 
             # Store indices of outliers as list
             outliers = np.where(
-                (self._values[level] > upper) | (self._values[level] < lower)
+                (values > upper) | (values < lower)
             )[0]
             for out in outliers:
-                o = self._values[level][out]
+                o = values[out]
                 out_x.append(level)
                 out_y.append(o)
-                out_color.append(self.palette[i])
+                out_color.append(colors[i])
 
         # Store
         self.set_and_get(self._data_scatter, self._attr_scatter, "out_x", out_x)
@@ -202,7 +206,7 @@ class BoxPlotBuilder(Builder):
         self.set_and_get(self._data_rect, self._attr_rect, "upper_height_boxes", upper_height_boxes)
         self.set_and_get(self._data_rect, self._attr_rect, "lower_center_boxes", lower_center_boxes)
         self.set_and_get(self._data_rect, self._attr_rect, "lower_height_boxes", lower_height_boxes)
-        self.set_and_get(self._data_rect, self._attr_rect, "colors", self.palette)
+        self.set_and_get(self._data_rect, self._attr_rect, "colors", colors)
 
     def _set_sources(self):
         "Push the BoxPlot data into the ColumnDataSource and calculate the proper ranges."
@@ -216,7 +220,7 @@ class BoxPlotBuilder(Builder):
         end_y = max(self._data_segment[self._attr_segment[3]])
 
         ## Expand min/max to encompass outliers
-        if self.outliers:
+        if self.outliers and self._data_scatter[self._attr_scatter[1]]:
             start_out_y = min(self._data_scatter[self._attr_scatter[1]])
             end_out_y = max(self._data_scatter[self._attr_scatter[1]])
             # it could be no outliers in some sides...
@@ -270,18 +274,6 @@ class BoxPlotBuilder(Builder):
             yield make_scatter(self._source_scatter, self._attr_scatter[0],
                               self._attr_scatter[1], self.marker,
                               self._attr_scatter[2])
-
-        # We need to build the legend here using dummy glyphs
-        for i, level in enumerate(self._groups):
-            # TODO: (bev) what is this None business?
-            glyph = Rect(
-                x="groups", y=None,
-                width=None, height=None,
-                line_color="black", fill_color=self.palette[i])
-            renderer = GlyphRenderer(data_source=self._source_legend, glyph=glyph)
-
-            # need to manually select the proper glyphs to be rendered as legends
-            self._legends.append((self._groups[i], [renderer]))
 
     # Some helper methods
     def set_and_get(self, data, attr, val, content):

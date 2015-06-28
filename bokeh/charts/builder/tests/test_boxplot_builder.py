@@ -12,13 +12,14 @@
 #-----------------------------------------------------------------------------
 # Imports
 #-----------------------------------------------------------------------------
+from __future__ import absolute_import
 
 from collections import OrderedDict
 import unittest
 
 import numpy as np
 import pandas as pd
-
+import blaze
 from bokeh.charts import BoxPlot
 
 from bokeh.charts.builder.tests._utils import create_chart
@@ -40,9 +41,11 @@ class TestBoxPlot(unittest.TestCase):
                       3., 1., 0., 5., 4., 2., 0., 0., 0., 1., 1., 0., 0.,
                       0.]))
         ])
+        groups = ['bronze', 'silver', 'gold']
         xyvaluesdf = pd.DataFrame(xyvalues)
+        xyvaluesbl = blaze.Data(xyvaluesdf)
         exptected_datarect = {
-            'colors': ['#f22c40', '#5ab738', '#407ee7', '#df5320', '#00ad9c', '#c33ff3'],
+            'colors': ['#f22c40', '#5ab738', '#407ee7'],
             'groups': ['bronze', 'silver', 'gold'],
             'iqr_centers': [2.5, 2.5, 2.5],
             'iqr_lengths': [3.0, 3.0, 4.5],
@@ -53,19 +56,18 @@ class TestBoxPlot(unittest.TestCase):
             'width': [0.8, 0.8, 0.8]
         }
         expected_scatter = {
-            'colors': ['#f22c40', '#f22c40', '#f22c40', '#f22c40', '#5ab738', '#5ab738'],
-            'out_x': ['bronze', 'bronze', 'bronze', 'bronze', 'silver', 'silver'],
-            'out_y': [7.0, 10.0, 8.0, 7.0, 8.0, 8.0]
+            'colors': ['#f22c40'],
+            'out_x': ['bronze'],
+            'out_y': [10.0]
         }
         expected_seg = {
-            'lower': [-3.0, -2.5, -4.75],
+            'lower': [-3.5, -3.5, -6.5],
              'q0': [1.0, 1.0, 0.25],
              'q2': [4.0, 4.0, 4.75],
-             'upper': [6.0, 6.5, 8.75]
+             'upper': [8.5, 8.5, 11.5]
         }
-        groups = ['bronze', 'silver', 'gold']
 
-        for i, _xy in enumerate([xyvalues, xyvaluesdf]):
+        for i, _xy in enumerate([xyvalues, xyvaluesdf, xyvaluesbl]):
             bp = create_chart(BoxPlot, _xy, marker='circle', outliers=True)
             builder = bp._builders[0]
             self.assertEqual(sorted(builder._groups), sorted(groups))
@@ -77,8 +79,6 @@ class TestBoxPlot(unittest.TestCase):
 
             for key, expected_v in expected_seg.items():
                 self.assertEqual(builder._data_segment[key], expected_v)
-
-            self.assertEqual(len(builder._legends), 3)
 
         lvalues = [
             np.array([7.0, 10.0, 8.0, 7.0, 4.0, 4.0, 1.0, 5.0, 2.0, 1.0,
@@ -93,7 +93,7 @@ class TestBoxPlot(unittest.TestCase):
         ]
 
         groups = exptected_datarect['groups'] = ['0', '1', '2']
-        expected_scatter['out_x'] = ['0', '0', '0', '0', '1', '1']
+        expected_scatter['out_x'] = ['0']
         for i, _xy in enumerate([lvalues, np.array(lvalues)]):
             bp = create_chart(BoxPlot, _xy, marker='circle', outliers=True)
             builder = bp._builders[0]
@@ -107,4 +107,9 @@ class TestBoxPlot(unittest.TestCase):
             for key, expected_v in expected_seg.items():
                 self.assertEqual(builder._data_segment[key], expected_v)
 
-            self.assertEqual(len(builder._legends), 3)
+    def test_no_outliers(self):
+        xyvalues = [7.0, 7.0, 8.0, 8.0, 9.0, 9.0]
+        bp = create_chart(BoxPlot, xyvalues, outliers=True)
+        builder = bp._builders[0]
+        outliers = builder._data_scatter['out_y']
+        self.assertEqual(len(outliers), 0)

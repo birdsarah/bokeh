@@ -2,7 +2,7 @@ from __future__ import division
 
 import numpy as np
 
-from bokeh.plotting import *
+from bokeh.plotting import figure, show, output_file, vplot
 
 def streamlines(x, y, u, v, density=1):
     '''Returns streamlines of a vector flow.
@@ -200,4 +200,4 @@ p1.segment(x0, y0, x1, y1, color=colors, line_width=2)
 p2 = figure()
 p2.multi_line(xs, ys, color="#ee6666", line_width=2, line_alpha=0.8)
 
-show(VBox(p1,p2))  # open a browser
+show(vplot(p1,p2))  # open a browser

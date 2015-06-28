@@ -1,7 +1,7 @@
 import numpy as np
 from six.moves import zip
 
-from bokeh.plotting import *
+from bokeh.plotting import figure, show, output_file
 
 N = 4000
 
@@ -15,6 +15,6 @@ TOOLS="resize,crosshair,pan,wheel_zoom,box_zoom,reset,tap,previewsave,box_select
 output_file("color_scatter.html", title="color_scatter.py example")
 
 p = figure(tools=TOOLS)
-p.scatter(x,y, radius=radii, fill_color=colors, fill_alpha=0.6, line_color=None)
+p.scatter(x, y, radius=radii, fill_color=colors, fill_alpha=0.6, line_color=None)
 
 show(p)  # open a browser

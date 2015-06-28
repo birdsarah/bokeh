@@ -1,6 +1,11 @@
+from __future__ import absolute_import
+
 import logging
 import os
-from os.path import join, dirname, abspath, exists
+from os.path import join, abspath, isdir
+
+from .util.paths import ROOT_DIR, bokehjsdir
+
 
 class Settings(object):
     _prefix = "BOKEH_"
@@ -49,11 +54,11 @@ class Settings(object):
     def version(self, default=None):
         return self._get_str("VERSION", default)
 
-    def local_docs_cdn(self, default=None):
-        return self._get_str("LOCAL_DOCS_CDN", default)
+    def docs_cdn(self, default=None):
+        return self._get_str("DOCS_CDN", default)
 
-    def released_docs(self, default=None):
-        return self._get_bool("RELEASED_DOCS", default, False)
+    def docs_version(self, default=None):
+        return self._get_str("DOCS_VERSION", default)
 
     def minified(self, default=None):
         return self._get_bool("MINIFIED", default, False)
@@ -61,13 +66,14 @@ class Settings(object):
     def log_level(self, default=None):
         return self._get_str("LOG_LEVEL", default, "debug")
 
-    def py_log_level(self, default='info'):
+    def py_log_level(self, default='none'):
         level = self._get_str("PY_LOG_LEVEL", default, "debug")
         LEVELS = {'debug': logging.DEBUG,
                   'info' : logging.INFO,
                   'warn' : logging.WARNING,
                   'error': logging.ERROR,
-                  'fatal': logging.CRITICAL}
+                  'fatal': logging.CRITICAL,
+                  'none' : None}
         return LEVELS[level]
 
     def pretty(self, default=None):
@@ -76,43 +82,21 @@ class Settings(object):
     def simple_ids(self, default=None):
         return self._get_bool("SIMPLE_IDS", default, True)
 
-    def notebook_resources(self, default=None):
-        return self._get_str("NOTEBOOK_RESOURCES", default)
-
-    def notebook_verbose(self, default=None):
-        return self._get_bool("NOTEBOOK_VERBOSE", default)
-
-    def notebook_hide_banner(self, default=None):
-        return self._get_bool("NOTEBOOK_HIDE_BANNER", default)
-
-    def notebook_skip_load(self, default=None):
-        return self._get_bool("NOTEBOOK_SKIP_LOAD", default)
-
     """
     Server settings go here:
     """
-    def serverdir(self):
-        return join(dirname(abspath(__file__)), 'server')
 
     def bokehjssrcdir(self):
         if self.debugjs:
-            basedir = dirname(dirname(self.serverdir()))
-            bokehjsdir = join(basedir, 'bokehjs', 'src')
+            bokehjssrcdir = abspath(join(ROOT_DIR, '..', 'bokehjs', 'src'))
 
-            if exists(bokehjsdir):
-                return bokehjsdir
+            if isdir(bokehjssrcdir):
+                return bokehjssrcdir
 
         return None
 
     def bokehjsdir(self):
-        if self.debugjs:
-            basedir = dirname(dirname(self.serverdir()))
-            bokehjsdir = join(basedir, 'bokehjs', 'build')
-
-            if exists(bokehjsdir):
-                return bokehjsdir
-
-        return join(self.serverdir(), 'static')
+        return bokehjsdir(self.debugjs)
 
     def js_files(self):
         bokehjsdir = self.bokehjsdir()

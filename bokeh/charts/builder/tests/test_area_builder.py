@@ -12,6 +12,7 @@
 #-----------------------------------------------------------------------------
 # Imports
 #-----------------------------------------------------------------------------
+from __future__ import absolute_import
 
 from collections import OrderedDict
 import unittest
@@ -57,7 +58,6 @@ class TestAreaBuilder(unittest.TestCase):
             assert_array_equal(builder._data['y_python'], y_python)
 
             self.assertIsInstance(area.x_range, DataRange1d)
-            self.assertEqual(area.x_range.sources[0].source, builder._source.columns('x').source)
             self.assertIsInstance(area.y_range, Range1d)
             assert_array_almost_equal(area.y_range.start, -12.6, decimal=4)
             assert_array_almost_equal(area.y_range.end, 138.6, decimal=4)
@@ -78,7 +78,6 @@ class TestAreaBuilder(unittest.TestCase):
             assert_array_equal(builder._data['y_2'], y_2)
 
             self.assertIsInstance(area.x_range, DataRange1d)
-            self.assertEqual(area.x_range.sources[0].source, builder._source.columns('x').source)
             self.assertIsInstance(area.y_range, Range1d)
             assert_array_almost_equal(area.y_range.start, -12.6, decimal=4)
             assert_array_almost_equal(area.y_range.end, 138.6, decimal=4)

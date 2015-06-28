@@ -13,14 +13,12 @@ ALLSPHINXOPTS   = -d $(BUILDDIR)/doctrees $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) sou
 # the i18n builder cannot share the environment and doctrees with the others
 I18NSPHINXOPTS  = $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) .
 
-.PHONY: help clean html main_gallery serve dirhtml singlehtml pickle json htmlhelp qthelp devhelp epub latex latexpdf text man changes linkcheck doctest gettext
+.PHONY: help clean html serve dirhtml singlehtml pickle json htmlhelp qthelp devhelp epub latex latexpdf text man changes linkcheck doctest gettext
 
 help:
 	@echo "Please use 'make <target>' where <target> is one of"
 	@echo "  all              to make all standalone HTML files"
 	@echo "  html             to make standalone (non-gallery) HTML files"
-	@echo "  main_gallery     to make standalone main gallery HTML files"
-	@echo "  tutorial_gallery to make standalone tutorial gallery HTML files"
 	@echo "  dirhtml          to make HTML files named index.html in directories"
 	@echo "  singlehtml       to make a single large HTML file"
 	@echo "  pickle           to make pickle files"
@@ -39,14 +37,6 @@ help:
 	@echo "  changes          to make an overview of all changed/added/deprecated items"
 	@echo "  linkcheck        to check all external links for integrity"
 	@echo "  doctest          to run all doctests embedded in the documentation (if enabled)"
-
-tutorial: tutorial_html
-	cp -r $(BUILDDIR)/tutorial_gallery $(BUILDDIR)/html/tutorial/solutions/gallery
-
-tutorial_html:
-	$(SPHINXBUILD) -b html -d $(BUILDDIR)/doctrees $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) tutorial_source $(BUILDDIR)/html
-	@echo
-	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html."
 
 all: html
 

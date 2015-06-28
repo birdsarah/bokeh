@@ -10,42 +10,44 @@ Attributes:
 
 '''
 
-from os.path import abspath, join, normpath, realpath, relpath, split, splitext
-import sys
+from __future__ import absolute_import
+
 import logging
 logger = logging.getLogger(__name__)
+from os.path import join, relpath, splitext
+import re
 
 import six
 
-from . import __version__, settings
+from . import __version__
+from .settings import settings
+from .util.paths import bokehjsdir
 
-def _server_static_dir():
-    return join(abspath(split(__file__)[0]), "server", "static")
+_DEV_PAT = re.compile(r"^(\d)+\.(\d)+\.(\d)+(dev|rc)")
 
-def _static_path(path):
-    path = normpath(join(_server_static_dir(), path))
-    if sys.platform == 'cygwin': path = realpath(path)
-    return path
 
 def _cdn_base_url():
     return "http://cdn.pydata.org"
 
 def _get_cdn_urls(version=None, minified=True):
     if version is None:
-        if settings.local_docs_cdn():
-            version = settings.local_docs_cdn()
+        if settings.docs_cdn():
+            version = settings.docs_cdn()
         else:
             version = __version__.split('-')[0]
 
-    # check the 'dev' fingerprint
-    dev = version.split('.')[-2]
     # check if we want minified js and css
     _min = ".min" if minified else ""
 
     base_url = _cdn_base_url()
     dev_container = 'bokeh/dev'
     rel_container = 'bokeh/release'
-    container = dev_container if dev.startswith(('dev', 'rc')) else rel_container
+
+    # check the 'dev' fingerprint
+    container = dev_container if _DEV_PAT.match(version) else rel_container
+
+    if version.endswith(('dev', 'rc')):
+        logger.debug("Getting CDN URL for local dev version will not produce usable URL")
 
     result = {
         'js_files'  : ['%s/%s/bokeh-%s%s.js' % (base_url, container, version, _min)],
@@ -56,7 +58,8 @@ def _get_cdn_urls(version=None, minified=True):
     if len(__version__.split('-')) > 1:
         result['messages'].append({
             "type" : "warn",
-            "text" : "Requesting CDN BokehJS version '%s' from Bokeh development version '%s'. This configuration is unsupported and may not work!" % (version, __version__)
+            "text" : ("Requesting CDN BokehJS version '%s' from Bokeh development version '%s'. "
+                      "This configuration is unsupported and may not work!" % (version, __version__))
         })
 
     return result
@@ -79,11 +82,6 @@ def _inline(paths):
         end = "/* END %s */" % path
         strings.append(begin + '\n' + middle + '\n' + end)
     return strings
-
-def _file_paths(files, minified):
-    if minified:
-        files = [ root + ".min" + ext for (root, ext) in map(splitext, files) ]
-    return [ _static_path(file) for file in files ]
 
 
 class Resources(object):
@@ -114,11 +112,11 @@ class Resources(object):
     * ``'inline'`` configure to provide entire BokehJS code and CSS inline
     * ``'cdn'`` configure to load BokehJS code and CS from ``http://cdn.pydata.org``
     * ``'server'`` configure to load from a Bokeh Server
-    * ``'server-dev'`` same as ``server`` but supports non-concatenated JS using ``requirejs``
+    * ``'server-dev'`` same as ``server`` but supports non-minified JS
     * ``'relative'`` configure to load relative to the given directory
-    * ``'relative-dev'`` same as ``relative`` but supports non-concatenated JS using ``requirejs``
+    * ``'relative-dev'`` same as ``relative`` but supports non-minified JS
     * ``'absolute'`` configure to load from the installed Bokeh library static directory
-    * ``'absolute-dev'`` same as ``absolute`` but supports non-concatenated JS using ``requirejs``
+    * ``'absolute-dev'`` same as ``absolute`` but supports non-minified JS
 
     Once configured, a Resource object exposes the following public attributes:
 
@@ -138,7 +136,7 @@ class Resources(object):
     _default_js_files = ["js/bokeh.js"]
     _default_css_files = ["css/bokeh.css"]
 
-    _default_js_files_dev = ['js/vendor/requirejs/require.js', 'js/config.js']
+    _default_js_files_dev = ['js/bokeh.js']
     _default_css_files_dev = ['css/bokeh.css']
 
     _default_root_dir = "."
@@ -158,7 +156,8 @@ class Resources(object):
             root_url = root_url + "/"
         self._root_url = root_url
         if mode not in ['inline', 'cdn', 'server', 'server-dev', 'relative', 'relative-dev', 'absolute', 'absolute-dev']:
-            raise ValueError("wrong value for 'mode' parameter, expected 'inline', 'cdn', 'server(-dev)', 'relative(-dev)' or 'absolute(-dev)', got %r" % self.mode)
+            raise ValueError("wrong value for 'mode' parameter, expected "
+                             "'inline', 'cdn', 'server(-dev)', 'relative(-dev)' or 'absolute(-dev)', got %r" % self.mode)
 
         if self.root_dir and not mode.startswith("relative"):
             raise ValueError("setting 'root_dir' makes sense only when 'mode' is set to 'relative'")
@@ -175,7 +174,7 @@ class Resources(object):
 
         js_paths = self._js_paths(dev=self.dev, minified=self.minified)
         css_paths = self._css_paths(dev=self.dev, minified=self.minified)
-        base_url = _static_path("js")
+        base_url = join(bokehjsdir(self.dev), "js")
 
         self._js_raw = []
         self._css_raw = []
@@ -205,10 +204,6 @@ class Resources(object):
             self.css_files = list(server['css_files'])
             self.messages.extend(server['messages'])
 
-        if self.dev:
-            require = 'require.config({ baseUrl: "%s" });' % base_url
-            self._js_raw.append(require)
-
     @property
     def log_level(self):
         return self._log_level
@@ -227,10 +222,7 @@ class Resources(object):
     def js_raw(self):
         if six.callable(self._js_raw):
             self._js_raw = self._js_raw()
-        if self.dev:
-            return self._js_raw
-        else:
-            return self._js_raw + ['Bokeh.set_log_level("%s");' % self.log_level]
+        return self._js_raw + ['Bokeh.set_log_level("%s");' % self.log_level]
 
     @property
     def css_raw(self):
@@ -245,28 +237,18 @@ class Resources(object):
         else:
             return self._default_root_url
 
+    def _file_paths(self, files, minified):
+        if minified:
+            files = [ root + ".min" + ext for (root, ext) in map(splitext, files) ]
+        return [ join(bokehjsdir(self.dev), file) for file in files ]
+
     def _js_paths(self, minified=True, dev=False):
         files = self._default_js_files_dev if self.dev else self._default_js_files
-        return _file_paths(files, False if dev else minified)
+        return self._file_paths(files, False if dev else minified)
 
     def _css_paths(self, minified=True, dev=False):
         files = self._default_css_files_dev if self.dev else self._default_css_files
-        return _file_paths(files, False if dev else minified)
-
-    @property
-    def js_wrapper(self):
-
-        def pad(text, n=4):
-            return "\n".join([ " "*n + line for line in text.split("\n") ])
-
-        wrapper = lambda code: 'Bokeh.$(function() {\n%s\n});' % pad(code)
-
-        if self.dev:
-            js_wrapper = lambda code: 'require(["jquery", "main"], function($, Bokeh) {\nBokeh.set_log_level("%s");\n%s\n});' % (self.log_level, pad(wrapper(code)))
-        else:
-            js_wrapper = wrapper
-
-        return js_wrapper
+        return self._file_paths(files, False if dev else minified)
 
     def _autoload_path(self, elementid):
         return self.root_url + "bokeh/autoload.js/%s" % elementid

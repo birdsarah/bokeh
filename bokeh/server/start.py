@@ -1,31 +1,22 @@
 from __future__ import absolute_import, print_function
 import logging
 log = logging.getLogger(__name__)
-import atexit
 import os
-import re
 import sys
-import uuid
-import time
 
-from flask import Flask
-from six.moves.queue import Queue
 from tornado.httpserver import HTTPServer
 from tornado import ioloop
 
 from .settings import settings as server_settings
-from ..settings import settings as bokeh_settings
-from .flask_gzip import Gzip
 
 from bokeh import plotting # imports custom objects for plugin
 from bokeh import models, protocol # import objects so that we can resolve them
-from bokeh.utils import scale_delta
+
 # this just shuts up pyflakes
 models, plotting, protocol
 from . import services
 from .app import bokeh_app, app
-from .configure import (configure_flask, make_tornado_app,
-                        register_blueprint, SimpleBokehTornadoApp)
+from .configure import configure_flask, make_tornado_app, register_blueprint
 
 def doc_prepare():
     server_settings.model_backend = {'type' : 'memory'}
@@ -63,7 +54,15 @@ def start_simple_server(args=None):
         start_redis()
     register_blueprint()
     tornado_app = make_tornado_app(flask_app=app)
-    server = HTTPServer(tornado_app)
+    if args is not None and args.https:
+        if args.https_certfile and args.https_keyfile:
+            server = HTTPServer(tornado_app, ssl_options={"certfile": args.https_certfile, "keyfile": args.https_keyfile})
+            log.info('HTTPS Enabled')
+        else:
+            server = HTTPServer(tornado_app)
+            log.warning('WARNING: --https-certfile or --https-keyfile are not specified, using http instead')
+    else:
+        server = HTTPServer(tornado_app)
     server.listen(server_settings.port, server_settings.ip)
     ioloop.IOLoop.instance().start()
 

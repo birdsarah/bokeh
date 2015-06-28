@@ -3,7 +3,7 @@
 
 import numpy as np
 
-from bokeh.plotting import *
+from bokeh.plotting import figure, show, output_server, vplot
 from bokeh.models import BoxSelectTool
 
 N = 100
@@ -22,7 +22,7 @@ select_tool = p1.select(dict(type=BoxSelectTool))
 select_tool.select_every_mousemove = False
 
 p2 = figure(title="selection on mousemove", tools=TOOLS)
-p2.circle(x, y, marker="square", color="green", size=6)
+p2.square(x, y, color="green", size=6)
 
 select_tool = p2.select(dict(type=BoxSelectTool))
 select_tool.select_every_mousemove = True
@@ -34,4 +34,4 @@ p4 = figure(title="custom highlight", tools=TOOLS)
 p4.square(x,y, color="blue", size=6,
     nonselection_fill_color="#FFFF00", nonselection_fill_alpha=1)
 
-show(VBox(p1,p2,p3,p4))  # open a browser
+show(vplot(p1,p2,p3,p4))  # open a browser

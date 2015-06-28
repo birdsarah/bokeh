@@ -15,6 +15,7 @@ passing the arguments to the Chart class and calling the proper functions.
 #-----------------------------------------------------------------------------
 # Imports
 #-----------------------------------------------------------------------------
+from __future__ import absolute_import
 
 from six import string_types
 import numpy as np
@@ -45,7 +46,7 @@ def Line(values, index=None, **kws):
             or a pandas DataFrame)
 
     In addition the the parameters specific to this chart,
-    :ref:`charts_generic_arguments` are also accepted as keyword parameters.
+    :ref:`userguide_charts_generic_arguments` are also accepted as keyword parameters.
 
     Returns:
         a new :class:`Chart <bokeh.charts.Chart>`
@@ -56,13 +57,14 @@ def Line(values, index=None, **kws):
         :source-position: above
 
         import numpy as np
-        from bokeh.charts import Line
-        from bokeh.plotting import output_file, show
+        from bokeh.charts import Line, output_file, show
 
         # (dict, OrderedDict, lists, arrays and DataFrames are valid inputs)
-        output_file('line.html')
         xyvalues = np.array([[2, 3, 7, 5, 26], [12, 33, 47, 15, 126], [22, 43, 10, 25, 26]])
+
         line = Line(xyvalues, title="line", legend="top_left", ylabel='Languages')
+
+        output_file('line.html')
         show(line)
 
     """
@@ -101,13 +103,12 @@ class LineBuilder(Builder):
         self._attr = []
         xs = self._values_index
         self.set_and_get("x", "", np.array(xs))
-        for col in self._values.keys():
+        for col, values in self._values.items():
             if isinstance(self.index, string_types) and col == self.index:
                 continue
 
             # save every new group we find
             self._groups.append(col)
-            values = [self._values[col][x] for x in xs]
             self.set_and_get("y_", col, values)
 
     def _set_sources(self):
@@ -116,7 +117,7 @@ class LineBuilder(Builder):
         proper ranges.
         """
         self._source = ColumnDataSource(self._data)
-        self.x_range = DataRange1d(sources=[self._source.columns("x")])
+        self.x_range = DataRange1d()
 
         y_names = self._attr[1:]
         endy = max(max(self._data[i]) for i in y_names)

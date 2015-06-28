@@ -16,8 +16,7 @@ import scipy.special
 
 from bokeh.embed import autoload_server
 from bokeh.models import GlyphRenderer
-from bokeh.plotting import (annular_wedge, cursession, figure, hold, legend,
-                            line, output_server, push, quad, xgrid, ygrid)
+from bokeh.plotting import cursession, figure, output_server, push
 
 from flask import Flask, render_template
 app = Flask(__name__)
@@ -170,9 +169,8 @@ class Population(object):
                                   Legend, SingleIntervalTicker)
         from bokeh.models.glyphs import Quad
 
-        xdr = DataRange1d(sources=[self.source_pyramid.columns("male"),
-                                   self.source_pyramid.columns("female")])
-        ydr = DataRange1d(sources=[self.source_pyramid.columns("groups")])
+        xdr = DataRange1d()
+        ydr = DataRange1d()
 
         self.plot = Plot(title="Widgets", x_range=xdr, y_range=ydr,
                          plot_width=600, plot_height=600)

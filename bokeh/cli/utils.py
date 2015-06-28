@@ -1,4 +1,4 @@
-from __future__ import print_function
+from __future__ import absolute_import, print_function
 
 from collections import OrderedDict
 from six.moves.urllib import request as urllib2
@@ -76,7 +76,6 @@ def get_data_from_url(request, start=0, length=0):
     Returns:
         String read from request
     """
-    ranged = False
     # Add the header to specify the range to download.
     if start and length:
         request.add_header("Range", "bytes=%d-%d" % (start, start + length - 1))

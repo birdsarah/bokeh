@@ -3,7 +3,7 @@
 
 import numpy as np
 
-from bokeh.plotting import *
+from bokeh.plotting import figure, show, output_server, vplot
 
 N = 100
 
@@ -28,10 +28,7 @@ p2.line(x, y, legend="sin(x)")
 p2.line(x, 2*y, legend="2*sin(x)",
     line_dash=[4, 4], line_color="orange", line_width=2)
 
-p2.square(x, 3*y, legend="3*sin(x)",
-    fill_color=None, line_color="green")
-p2.line(x, 3*y, legend="3*sin(x)",
-    fill_color=None, line_color="green")
+p2.square(x, 3*y, legend="3*sin(x)", fill_color=None, line_color="green")
+p2.line(x, 3*y, legend="3*sin(x)", line_color="green")
 
-show(VBox(p1, p2))  # open a browser
-
+show(vplot(p1, p2))  # open a browser

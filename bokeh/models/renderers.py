@@ -7,9 +7,9 @@ from __future__ import absolute_import
 from ..plot_object import PlotObject
 from ..properties import Int, String, Enum, Instance, List, Dict, Tuple, Include
 from ..mixins import LineProps, TextProps
-from ..enums import Units, Orientation
+from ..enums import Units, Orientation, RenderLevel
 
-from .sources import DataSource, ServerDataSource
+from .sources import DataSource
 from .glyphs import Glyph
 
 class Renderer(PlotObject):
@@ -57,6 +57,10 @@ class GlyphRenderer(Renderer):
     but not when no points at all are selected.)
     """)
 
+    level = Enum(RenderLevel, default="glyph", help="""
+    Specifies the level in which to render the glyph.
+    """)
+
 # TODO: (bev) This should really go in a separate module
 class Legend(Renderer):
     """ Render informational legends for a plot.
@@ -80,23 +84,23 @@ class Legend(Renderer):
     """)
 
     label_standoff = Int(15, help="""
-    The distance in pixels
+    The distance (in pixels) to separate the label from its associated glyph.
     """)
 
     label_height = Int(20, help="""
-    The height in pixels that the area that legend labels should occupy.
+    The height (in pixels) of the area that legend labels should occupy.
     """)
 
     label_width = Int(50, help="""
-    The width in pixels that the area that legend labels should occupy.
+    The width (in pixels) of the area that legend labels should occupy.
     """)
 
     glyph_height = Int(20, help="""
-    The height in pixels that the rendered legend glyph should occupy.
+    The height (in pixels) that the rendered legend glyph should occupy.
     """)
 
     glyph_width = Int(20, help="""
-    The width in pixels that the rendered legend glyph should occupy.
+    The width (in pixels) that the rendered legend glyph should occupy.
     """)
 
     legend_padding = Int(10, help="""
@@ -104,7 +108,7 @@ class Legend(Renderer):
     """)
 
     legend_spacing = Int(3, help="""
-    Amount of spacing between legend entried
+    Amount of spacing between legend entries.
     """)
 
     legends = List(Tuple(String, List(Instance(GlyphRenderer))), help="""

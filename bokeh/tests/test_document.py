@@ -1,7 +1,7 @@
+from __future__ import absolute_import
 
 import unittest
 
-import bokeh
 import bokeh.document as document
 from bokeh.exceptions import DataIntegrityException
 from bokeh.models import PlotContext

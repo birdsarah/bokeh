@@ -1,8 +1,9 @@
 from __future__ import absolute_import
 
+from .actions import Callback
 from ..plot_object import PlotObject
 from ..properties import HasProps
-from ..properties import Any, Int, String, Instance, List, Dict, Either, Bool
+from ..properties import Any, Int, String, Instance, List, Dict, Either, Bool, Enum
 
 class DataSource(PlotObject):
     """ A base class for data source types. ``DataSource`` is
@@ -14,8 +15,32 @@ class DataSource(PlotObject):
     An list of names for all the columns in this DataSource.
     """)
 
-    selected = List(Int, help="""
-    A list of selected indices on this DataSource.
+    selected = Dict(String, Dict(String, Any), default={
+        '0d': {'flag': False, 'indices': []},
+        '1d': {'indices': []},
+        '2d': {'indices': []}
+    }, help="""
+    A dict to indicate selected indices on different dimensions on this DataSource. Keys are:
+
+    - 0d: indicates whether a Line or Patch glyphs have been hit. Value is a
+            dict with the following keys:
+
+            - flag (boolean): true if glyph was with false otherwise
+            - indices (list): indices hit (if applicable)
+
+    - 1d: indicates whether any of all other glyph (except [multi]line or
+            patches) was hit:
+
+            - indices (list): indices that were hit/selected
+
+    - 2d: indicates whether a [multi]line or patches) were hit:
+
+            - indices (list(list)): indices of the lines/patches that were
+                hit/selected
+    """)
+
+    callback = Instance(Callback, help="""
+    A callback to run in the browser whenever the selection is changed.
     """)
 
     def columns(self, *columns):
@@ -208,7 +233,21 @@ class RemoteSource(DataSource):
     """)
 
 class AjaxDataSource(RemoteSource):
-    method = String('POST', help="http method - GET or POST")
+    method = Enum('POST', 'GET', help="http method - GET or POST")
+
+    mode = Enum("replace", "append", help="""
+    Whether to append new data to existing data (up to ``max_size``),
+    or to replace existing data entirely.
+    """)
+    max_size = Int(help="""
+    Maximum size of the data array being kept after each pull requests.
+    Larger than that size, the data will be right shifted.
+    """)
+    if_modified = Bool(False, help="""
+    Whether to include an ``If-Modified-Since`` header in AJAX requests
+    to the server. If this header is supported by the server, then only
+    new data since the last request will be returned.
+    """)
 
 class BlazeDataSource(RemoteSource):
     #blaze parts
@@ -236,7 +275,7 @@ class BlazeDataSource(RemoteSource):
     def to_blaze(self):
         from blaze.server.client import Client
         from blaze.server import from_tree
-        from blaze import Data, Symbol
+        from blaze import Data
         # hacky - blaze urls have `compute.json` in it, but we need to strip it off
         # to feed it into the blaze client lib
         c = Client(self.data_url.rsplit('compute.json', 1)[0])

@@ -13,6 +13,8 @@
 # Imports
 #-----------------------------------------------------------------------------
 
+from __future__ import absolute_import
+
 import unittest
 from mock import patch
 
@@ -23,7 +25,7 @@ from bokeh.models import (
     ColumnDataSource, Grid, GlyphRenderer, LinearAxis, Range1d, Ticker)
 from bokeh.models.ranges import FactorRange
 from bokeh.models.tools import (
-    BoxZoomTool, LassoSelectTool, PanTool, PreviewSaveTool, ResetTool,
+    BoxZoomTool, HelpTool, LassoSelectTool, PanTool, PreviewSaveTool, ResetTool,
     ResizeTool, WheelZoomTool)
 
 #-----------------------------------------------------------------------------
@@ -154,7 +156,7 @@ class TestChart(unittest.TestCase):
             width=800, height=600, filename=False, server=False, notebook=False
         )
         expected = [
-            [PanTool,  WheelZoomTool, BoxZoomTool, PreviewSaveTool, ResizeTool, ResetTool],
+            [PanTool,  WheelZoomTool, BoxZoomTool, PreviewSaveTool, ResizeTool, ResetTool, HelpTool],
             [],
             [ResizeTool, PanTool,  BoxZoomTool, ResetTool, LassoSelectTool],
         ]
@@ -180,4 +182,3 @@ class TestChart(unittest.TestCase):
 
         self.compare_tools(chart.tools, expected_tools)
         mock_warn.assert_any_call(msg_repeat)
-

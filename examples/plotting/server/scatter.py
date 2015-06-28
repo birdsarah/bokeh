@@ -3,7 +3,7 @@
 
 import numpy as np
 
-from bokeh.plotting import *
+from bokeh.plotting import figure, show, output_server, vplot
 
 N = 100
 
@@ -26,4 +26,4 @@ p3.scatter(x,y, marker="square", color="green")
 p4 = figure(tools=TOOLS)
 p4.scatter(x,y, marker="square", color="blue")
 
-show(VBox(p1, p2, p3, p4))
+show(vplot(p1, p2, p3, p4))

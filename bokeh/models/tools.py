@@ -27,7 +27,6 @@ from ..properties import Any, Bool, String, Enum, Instance, Either, List, Dict, 
 from ..enums import Dimension
 
 from .renderers import Renderer
-from .ranges import Range
 from .actions import Action
 
 class ToolEvents(PlotObject):
@@ -191,6 +190,13 @@ class CrosshairTool(Tool):
 
     """
 
+    dimensions = List(Enum(Dimension), default=["width", "height"], help="""
+    Which dimensions the crosshair tool is to track. By default, both a
+    vertical and horizontal line will be dran. If only "width" is supplied, 
+    only a horizontal line will be drawn. If only "height" is supplied, 
+    only a vertical line will be drawn.
+    """)
+
 class BoxZoomTool(Tool):
     """ *toolbar icon*: |box_zoom_icon|
 
@@ -334,7 +340,7 @@ class HoverTool(Tool):
     with the *toolbar icon* shown above.
 
     The hover tool displays informational tooltips whenever the cursor
-    is directly is over a glyph. The data to show comes from the glyph's
+    is directly over a glyph. The data to show comes from the glyph's
     data source, and what is to be displayed is configurable through a
     ``tooltips`` attribute that maps display names to columns in the
     data source, or to special known variables.
@@ -401,15 +407,35 @@ class HoverTool(Tool):
     Whether the hover tool must be explicitly activated.
     """)
 
-    snap_to_data = Bool(True, help="""
-    Whether the tooltip position should snap to the "center" position
-    of the associated glyph. For instance, if set to True, the tooltip
-    will point to the center of any marker (e.g., ``Circle``, `` Square``)
-    regardless of the cursor position, as long as the cursor hits the
-    glyph.
+    mode = Enum("mouse", "hline", "vline", help="""
+    Whether to consider hover pointer as a point (x/y values), or a
+    span on h or v directions.
+    """)
 
-    .. note::
-        Not all glyphs support this feature. Currenly all marker glyphs,
-        the ``Rect`` and ``Quad`` glyphs are supported.
+    point_policy = Enum("snap_to_data", "follow_mouse", "none", help="""
+    Whether the tooltip position should snap to the "center" position of
+    the associated glyph, or always follow the current mouse cursor
+    position.
+    """)
 
+    line_policy = Enum("prev", "next", "nearest", "interp", "none", help="""
+    When showing tooltips for lines, whether the tooltip position should be
+    the "previous" or "next" points on the line, the nearest point to the
+    current mouse position, or interpolate along the line to the current
+    mouse position.
+    """)
+
+class HelpTool(Tool):
+    """
+    The help tool is a widget designed to replace the hardcoded 'Help' link.
+    The hover text can be customized through the ``help_tooltip`` attribute
+    and the redirect site overridden as well.
+    """
+
+    help_tooltip = String(help="""
+    Tooltip displayed when hovering over the help icon.
+    """)
+
+    redirect = String(help="""
+    Site to be redirected through upon click.
     """)

@@ -1,8 +1,10 @@
 """ Classes that can be mixed-in to Bokeh model classes to add sets of
 related properties in bulk. """
 
+from __future__ import absolute_import
+
 from .properties import (
-    HasProps, ColorSpec, DataSpec, Enum, DashPattern, Int, String)
+    HasProps, ColorSpec, Enum, DashPattern, Int, NumberSpec, String, FontSizeSpec)
 from .enums import LineJoin, LineCap, FontStyle, TextAlign, TextBaseline
 
 class FillProps(HasProps):
@@ -26,7 +28,7 @@ class FillProps(HasProps):
 
     """)
 
-    fill_alpha = DataSpec(default=1.0, help="""
+    fill_alpha = NumberSpec(default=1.0, help="""
     An alpha value to use to fill paths with.
 
     Acceptable values are floating point numbers between 0 (transparent)
@@ -55,11 +57,11 @@ class LineProps(HasProps):
 
     """)
 
-    line_width = DataSpec("line_width", default=1, help="""
+    line_width = NumberSpec(default=1, help="""
     Stroke width in units of pixels.
     """)
 
-    line_alpha = DataSpec(default=1.0, help="""
+    line_alpha = NumberSpec(default=1.0, help="""
     An alpha value to use to stroke paths with.
 
     Acceptable values are floating point numbers between 0 (transparent)
@@ -130,7 +132,7 @@ class TextProps(HasProps):
 
     """)
 
-    text_font_size = String("12pt")
+    text_font_size = FontSizeSpec("12pt")
 
     text_font_style = Enum(FontStyle, help="""
     A style to use for rendering text.
@@ -157,7 +159,7 @@ class TextProps(HasProps):
 
     """)
 
-    text_alpha = DataSpec(default=1.0, help="""
+    text_alpha = NumberSpec(default=1.0, help="""
     An alpha value to use to fill text with.
 
     Acceptable values are floating point numbers between 0 (transparent)

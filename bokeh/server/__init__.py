@@ -1,18 +1,16 @@
-from __future__ import print_function
+from __future__ import absolute_import, print_function
 
 import argparse, os, sys
-import imp
 import logging
-from os.path import dirname
 
 import werkzeug.serving
 
-from bokeh import __version__
-from bokeh.server.utils.reload import robust_reloader
-from bokeh.server.app import bokeh_app
-from bokeh.settings import settings
+from bokeh import __version__; __version__
+from bokeh.server.utils.reload import robust_reloader; robust_reloader
+from bokeh.server.app import bokeh_app; bokeh_app
+from bokeh.settings import settings; settings
 
-DEFAULT_BACKEND = os.environ.get('BOKEH_SERVER_DEFAULT_BACKEND', 'shelve')
+DEFAULT_BACKEND = os.environ.get('BOKEH_SERVER_DEFAULT_BACKEND', 'memory')
 if DEFAULT_BACKEND not in ['redis', 'shelve', 'memory']:
     print("Unrecognized default backend: '%s'. Accepted values are: 'redis', 'shelve', 'memory'" % DEFAULT_BACKEND)
     sys.exit(1)
@@ -34,6 +32,19 @@ def build_parser():
                          )
     general.add_argument("--url-prefix",
                          help="URL prefix for server. e.g. 'host:port/<prefix>/bokeh' (default: None)",
+                         type=str
+                         )
+    general.add_argument("--https",
+                         help="If present, the server will be use HTTPS instead of HTTP (defualt: False).",
+                         action="store_true",
+                         default=False
+                         )
+    general.add_argument("--https-certfile",
+                         help="Required with the --https flag. Must be the filename of a valid HTTPS crt file (default: None)",
+                         type=str
+                         )
+    general.add_argument("--https-keyfile",
+                         help="Required with the --https flag. Must be the filename of a valid HTTPS key file (default: None)",
                          type=str
                          )
 
@@ -88,7 +99,7 @@ def build_parser():
     # dev, debugging, etc.
     class DevAction(argparse.Action):
         def __call__(self, parser, namespace, values, option_string=None):
-            namespace.splitjs = True
+            #namespace.splitjs = True
             namespace.debugjs = True
             namespace.backend = 'memory'
 

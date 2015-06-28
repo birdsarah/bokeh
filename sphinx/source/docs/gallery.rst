@@ -1,15 +1,15 @@
 .. _gallery:
 
-=======
 Gallery
-=======
+#######
 
 .. toctree::
    :hidden:
    :glob:
 
-   gallery/*
    server_gallery/*
+
+.. _gallery_server_examples:
 
 Server Examples
 ===============
@@ -27,6 +27,7 @@ Bokeh server.
 * :doc:`server_gallery/line_animate`.
 * :doc:`server_gallery/aw_animate`.
 
+.. _gallery_static_examples:
 
 Static Examples
 ===============
@@ -44,4 +45,6 @@ plot.
 .. cssclass:: gallery clearfix
 
 .. bokeh-gallery:: main_gallery.json
+
+
 
